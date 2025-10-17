@@ -78,6 +78,12 @@ def print_sympy_matrix(M: Matrix,
     # (we'll do a compact visual with first line including left bracket and others aligned)
     return "\n".join(formatted_lines)
 
+def se3_to_SE3(M: Matrix):
+    SE3 = Matrix([[0,    -M[2, 0], M[1, 0]],
+                  [M[2, 0],  0,   -M[0, 0]],
+                  [-M[1, 0], M[0, 0], 0]])
+    return SE3
+
 if __name__ == "__main__":
     # symbols
     theta, beta, tdot, bdot, s40, c40= symbols('theta beta tdot bdot s40 c40', real=True)
@@ -135,7 +141,7 @@ if __name__ == "__main__":
     print(print_sympy_matrix(Rddot))
 
     # Example with numerical substitutions in radians
-    subs_vals = {theta: math.pi/2, beta: 0.0, tdot: 6.28, bdot: 3.0, s40: math.sin(40/180*math.pi), c40: math.cos(40/180*math.pi)}
+    subs_vals = {theta: 0.0, beta: 0.0, tdot: 6.28, bdot: 3.0, s40: math.sin(40/180*math.pi), c40: math.cos(40/180*math.pi)}
     print("\nAdot (numeric) =")
     print(print_sympy_matrix(Adot, subs=subs_vals, float_digits=6))
     P1 = Matrix([0, 350, 150])
@@ -156,3 +162,27 @@ if __name__ == "__main__":
     print("\nRddot*P2 (numeric) =")
     print(print_sympy_matrix(Rddot*P2, subs=subs_vals, float_digits=6))
     
+    print ("\nVerification by Lie's algebra:")
+    w0 = Matrix([0, 0, 3]) # Expressed in frame 0
+    w1 = Matrix([0, 6.28, 0]) # Expressed in frame 1
+
+    W0 = se3_to_SE3(w0) # Expressed in frame 0
+    W1 = se3_to_SE3(w0 + A * B * w1) # Expressed in frame 0
+
+    # find W1 dot
+    print("\nW1 (symbolic)=")
+    print(print_sympy_matrix(W1, subs=subs_vals, float_digits=6))
+
+    W1_dot = simplify(W1.diff(beta) * bdot) # As it only affect by beta
+    print("\nW1_dot (symbolic)=")
+    print(print_sympy_matrix(W1_dot, subs=subs_vals, float_digits=6))
+
+    print("\nAdot (verification)=")
+    print(print_sympy_matrix(W0*A, subs=subs_vals, float_digits=6))
+    print("\nRdot (verification)=")
+    print(print_sympy_matrix(W1*R, subs=subs_vals, float_digits=6))
+
+    print("\nAddot (verification)=")
+    print(print_sympy_matrix(W0*W0*A, subs=subs_vals, float_digits=6))
+    print("\nRddot (verification)=")
+    print(print_sympy_matrix(W1_dot*R+W1*W1*R, subs=subs_vals, float_digits=6))
